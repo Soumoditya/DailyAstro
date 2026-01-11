@@ -3,297 +3,245 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vedic Daily & Astro Guide</title>
-    <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
+    <title>Vedic Astro - Debug Mode</title>
+    
     <style>
-        :root {
-            --primary: #d35400; /* Burnt Orange */
-            --bg: #fff8f0;
-            --card-bg: #ffffff;
-            --text: #2c3e50;
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            margin: 0;
-            padding: 20px;
-        }
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .card {
-            background: var(--card-bg);
-            padding: 20px;
-            margin-bottom: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            border-top: 5px solid var(--primary);
-        }
-        h2 { margin-top: 0; color: var(--primary); font-size: 1.2rem; }
+        body { font-family: sans-serif; background: #f4f4f4; padding: 20px; max-width: 600px; margin: auto; }
+        .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h2 { margin-top: 0; color: #d35400; }
+        button { background: #d35400; color: white; border: none; padding: 10px 20px; cursor: pointer; font-size: 1rem; border-radius: 4px; width: 100%; }
+        button:hover { background: #e67e22; }
+        input { padding: 8px; width: 100%; box-sizing: border-box; margin-bottom: 10px; border: 1px solid #ccc; }
         
-        /* Status Colors */
-        .good { color: #27ae60; font-weight: bold; }
-        .bad { color: #c0392b; font-weight: bold; }
-        .neutral { color: #f39c12; font-weight: bold; }
-
-        label { display: block; margin-top: 10px; font-weight: bold; }
-        input, button { 
-            width: 100%; 
-            padding: 10px; 
-            margin-top: 5px; 
-            border: 1px solid #ccc; 
-            border-radius: 5px; 
-            box-sizing: border-box;
+        /* DEBUG CONSOLE STYLES */
+        #debug-console {
+            background: #000;
+            color: #0f0;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 12px;
+            margin-top: 30px;
+            height: 200px;
+            overflow-y: scroll;
+            border: 2px solid #333;
         }
-        button {
-            background-color: var(--primary);
-            color: white;
-            font-weight: bold;
-            border: none;
-            cursor: pointer;
-            margin-top: 15px;
-        }
-        button:hover { background-color: #e67e22; }
-        
-        #loading-msg { text-align: center; font-style: italic; color: #666; }
-        .hidden { display: none; }
+        .log-err { color: #ff3333; font-weight: bold; }
+        .log-warn { color: #ffff33; }
+        .log-info { color: #00ccff; }
+        .status-good { color: green; font-weight: bold; }
+        .status-bad { color: red; font-weight: bold; }
     </style>
+
+    <script>
+        function log(msg, type="info") {
+            const consoleBox = document.getElementById('debug-console');
+            if(consoleBox) {
+                const line = document.createElement('div');
+                line.textContent = `> ${msg}`;
+                if(type === 'error') line.className = 'log-err';
+                if(type === 'warn') line.className = 'log-warn';
+                consoleBox.appendChild(line);
+                consoleBox.scrollTop = consoleBox.scrollHeight;
+            }
+            console.log(msg);
+        }
+
+        window.onerror = function(message, source, lineno, colno, error) {
+            log(`CRASH: ${message} (Line: ${lineno})`, 'error');
+            return false;
+        };
+    </script>
 </head>
 <body>
 
-<div class="container">
-    <div class="header">
-        <h1>🕉️ Vedic Astro Guide</h1>
-        <p>Real-Time Panchang & Grooming</p>
+    <h1>🕉️ Vedic Guide (System Check)</h1>
+
+    <div class="card">
+        <h2>📅 Today's Status</h2>
+        <div id="panchang-content">Loading...</div>
     </div>
 
-    <div id="loading-msg">Loading Astronomical Data...</div>
-
-    <div id="main-content" class="hidden">
-        <div class="card">
-            <h2>📅 Today's Panchang</h2>
-            <p><strong>Date:</strong> <span id="date-span"></span></p>
-            <p><strong>Tithi:</strong> <span id="tithi-span"></span></p>
-            <p><strong>Nakshatra (Moon Star):</strong> <span id="nak-span"></span></p>
-            <p><strong>Moon Sign (Rashi):</strong> <span id="rashi-span"></span></p>
-        </div>
-
-        <div class="card">
-            <h2>✂️ Grooming (Shaving/Cut)</h2>
-            <p>Is today suitable?</p>
-            <h3 id="groom-verdict">...</h3>
-            <p id="groom-reason" style="font-size:0.9rem;"></p>
-        </div>
-
-        <div class="card">
-            <h2>🔮 Personal Prediction</h2>
-            <label>Birth Date:</label>
-            <input type="date" id="dob">
-            <label>Birth Time:</label>
-            <input type="time" id="tob" value="12:00">
-            <button onclick="calcPersonal()">Check My Day</button>
-            
-            <div id="personal-output" class="hidden" style="margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
-                <p><strong>Your Birth Star:</strong> <span id="user-star"></span></p>
-                <p><strong>Tara Bala:</strong> <span id="tara-result"></span></p>
-                <p id="tara-desc" style="font-style: italic;"></p>
-            </div>
-        </div>
+    <div class="card">
+        <h2>✂️ Grooming</h2>
+        <div id="grooming-result">Loading...</div>
     </div>
-</div>
 
-<script>
-    // === VEDIC DATA ===
-    const nakshatras = [
-        "Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra", "Punarvasu", "Pushya", "Ashlesha",
-        "Magha", "Purva Phalguni", "Uttara Phalguni", "Hasta", "Chitra", "Swati", "Vishakha", "Anuradha", "Jyeshtha",
-        "Mula", "Purva Ashadha", "Uttara Ashadha", "Shravana", "Dhanishta", "Shatabhisha", "Purva Bhadrapada", "Uttara Bhadrapada", "Revati"
-    ];
-    const rasis = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"];
-    const tithis = ["Prathama", "Dwitiya", "Tritiya", "Chaturthi", "Panchami", "Shashthi", "Saptami", "Ashtami", "Navami", "Dashami", "Ekadashi", "Dwadashi", "Trayodashi", "Chaturdashi", "Purnima/Amavasya"];
+    <div class="card">
+        <h2>🔮 Personal Prediction</h2>
+        <label>Date of Birth:</label>
+        <input type="date" id="dob">
+        <label>Time of Birth:</label>
+        <input type="time" id="tob" value="12:00">
+        <button onclick="runPersonalCalc()">Get Prediction</button>
+        <div id="personal-result" style="margin-top:15px; font-weight:bold;"></div>
+    </div>
 
-    // Tara Bala Meanings
-    const taraMeaning = [
-        { type: "Janma (Birth)", quality: "bad", text: "Avoid travel and new beginnings. Health may be sensitive." },       // 1
-        { type: "Sampat (Wealth)", quality: "good", text: "Excellent for financial gains and business." },                 // 2
-        { type: "Vipat (Danger)", quality: "bad", text: "Risk of accidents or losses. Stay low profile." },                // 3
-        { type: "Kshema (Well-being)", quality: "good", text: "Good for comfort, home, and safe activities." },            // 4
-        { type: "Pratyak (Obstacle)", quality: "bad", text: "Expect delays. Do not start important work." },               // 5
-        { type: "Sadhana (Success)", quality: "good", text: "Great for hard work and achieving goals." },                  // 6
-        { type: "Naidhana (Death/Loss)", quality: "bad", text: "Worst day. Strict avoid for all major activities." },      // 7
-        { type: "Mitra (Friend)", quality: "good", text: "Good for social activities and partnerships." },                 // 8
-        { type: "Parama Mitra (Best Friend)", quality: "good", text: "Excellent support from universe and friends." }      // 9 (0)
-    ];
+    <h3>🔧 System Logs (Tell me what this says if it fails)</h3>
+    <div id="debug-console">
+        <div>System initialized...</div>
+    </div>
 
-    // === ASTRO CALCULATIONS ===
-    
-    // 1. Ayanamsa Calculation (Lahiri)
-    // Simple linear approximation sufficient for this use case
-    function getAyanamsa(date) {
-        const year = date.getFullYear();
-        // Base value for year 2000 is approx 23.85 degrees
-        // Moves approx 0.0139 degrees per year
-        return 23.85 + ((year - 2000) * 0.0139);
-    }
+    <script>
+        log("Attempting to load Astronomy Engine...", "info");
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js" 
+            onload="log('Library loaded successfully.', 'info'); initApp();" 
+            onerror="log('FAILED to load Library from CDN. Check Internet.', 'error');">
+    </script>
 
-    function calculateVedicData(dateObj) {
-        try {
-            // 1. Get Tropical Positions from Astronomy Engine
-            // Use default observer (Geocentric) by passing null/undefined if MakeObserver fails, 
-            // but here we use a dummy observer 0,0 for geocentric equivalent.
-            const observer = Astronomy.MakeObserver(0, 0, 0); 
+    <script>
+        // --- DATA ---
+        const nakshatras = ["Ashwini","Bharani","Krittika","Rohini","Mrigashira","Ardra","Punarvasu","Pushya","Ashlesha","Magha","Purva Phalguni","Uttara Phalguni","Hasta","Chitra","Swati","Vishakha","Anuradha","Jyeshtha","Mula","Purva Ashadha","Uttara Ashadha","Shravana","Dhanishta","Shatabhisha","Purva Bhadrapada","Uttara Bhadrapada","Revati"];
+        const tithis = ["Prathama","Dwitiya","Tritiya","Chaturthi","Panchami","Shashthi","Saptami","Ashtami","Navami","Dashami","Ekadashi","Dwadashi","Trayodashi","Chaturdashi","Purnima/Amavasya"];
+
+        let globalTodayData = null;
+
+        // --- CORE FUNCTIONS ---
+        function initApp() {
+            log("Starting calculations...", "info");
+            try {
+                if (typeof Astronomy === 'undefined') {
+                    throw new Error("Astronomy object is missing.");
+                }
+                
+                const now = new Date();
+                log(`Current Time: ${now.toString()}`, "info");
+
+                globalTodayData = calculateVedic(now);
+                
+                if (globalTodayData) {
+                    displayPanchang(globalTodayData);
+                    checkGrooming(globalTodayData);
+                    log("App running successfully.", "info");
+                }
+            } catch (e) {
+                log(e.message, 'error');
+            }
+        }
+
+        function calculateVedic(dateObj) {
+            log(`Calculating for date: ${dateObj.toDateString()}`);
             
+            // 1. Get Positions
+            // Using Geocentric Observer (Latitude 0, Longitude 0) to avoid location errors
+            const observer = Astronomy.MakeObserver(0, 0, 0);
             const moonEq = Astronomy.Equator("Moon", dateObj, observer, true, true);
             const sunEq = Astronomy.Equator("Sun", dateObj, observer, true, true);
             
-            const moonEcl = Astronomy.Ecliptic(moonEq);
-            const sunEcl = Astronomy.Ecliptic(sunEq);
+            // 2. Convert to Ecliptic
+            const moonLon = Astronomy.Ecliptic(moonEq).lon;
+            const sunLon = Astronomy.Ecliptic(sunEq).lon;
 
-            // 2. Convert to Sidereal (Vedic)
-            const ayanamsa = getAyanamsa(dateObj);
+            // 3. Apply Ayanamsa (Approx Lahiri)
+            const year = dateObj.getFullYear();
+            const ayanamsa = 23.85 + ((year - 2000) * 0.0139);
             
-            let moonLon = (moonEcl.lon - ayanamsa);
-            let sunLon = (sunEcl.lon - ayanamsa);
+            let vMoon = (moonLon - ayanamsa + 360) % 360;
+            let vSun = (sunLon - ayanamsa + 360) % 360;
 
-            // Normalize to 0-360
-            if (moonLon < 0) moonLon += 360;
-            if (sunLon < 0) sunLon += 360;
-
-            // 3. Calc Nakshatra
-            // Each nakshatra is 13deg 20min = 13.3333 deg
-            const nakIndex = Math.floor(moonLon / 13.33333);
+            // 4. Nakshatra
+            const nakIndex = Math.floor(vMoon / 13.33333);
             
-            // 4. Calc Rasi (Sign)
-            // Each sign is 30 deg
-            const rasiIndex = Math.floor(moonLon / 30);
-
-            // 5. Calc Tithi
-            // (Moon - Sun) / 12 deg
-            let diff = moonLon - sunLon;
+            // 5. Tithi
+            let diff = vMoon - vSun;
             if (diff < 0) diff += 360;
             const tithiIndex = Math.floor(diff / 12);
 
+            log(`Calculated: Nak Index ${nakIndex}, Tithi Index ${tithiIndex}`);
+
             return {
-                nakIndex: nakIndex, // 0-26
+                nakIndex: nakIndex,
                 nakName: nakshatras[nakIndex % 27],
-                rasiIndex: rasiIndex,
-                rasiName: rasis[rasiIndex % 12],
-                tithiIndex: tithiIndex, // 0-29
+                tithiIndex: tithiIndex,
                 tithiName: tithis[tithiIndex % 15],
-                paksha: tithiIndex < 15 ? "Shukla (Waxing)" : "Krishna (Waning)",
-                weekday: dateObj.getDay() // 0=Sun
+                weekday: dateObj.getDay()
             };
-        } catch (e) {
-            console.error(e);
-            alert("Error calculating astronomy data. Please check console.");
-            return null;
-        }
-    }
-
-    // === MAIN LOGIC ===
-    let todayData = null;
-
-    window.onload = function() {
-        if (typeof Astronomy === 'undefined') {
-            document.getElementById("loading-msg").innerText = "Error: Astronomy library failed to load. Check internet connection.";
-            return;
-        }
-        
-        const now = new Date();
-        todayData = calculateVedicData(now);
-        
-        if (todayData) {
-            document.getElementById("loading-msg").classList.add("hidden");
-            document.getElementById("main-content").classList.remove("hidden");
-            renderPanchang(now);
-            checkGrooming();
-        }
-    };
-
-    function renderPanchang(date) {
-        document.getElementById("date-span").innerText = date.toDateString();
-        document.getElementById("tithi-span").innerText = `${todayData.tithiName} (${todayData.paksha})`;
-        document.getElementById("nak-span").innerText = todayData.nakName;
-        document.getElementById("rashi-span").innerText = todayData.rasiName;
-    }
-
-    function checkGrooming() {
-        let reasons = [];
-        let isBad = false;
-        
-        // 1. Weekdays (Tue=2, Sat=6, Thu=4 usually avoided)
-        const day = todayData.weekday;
-        if (day === 2) { isBad = true; reasons.push("It is Tuesday (Mars/Conflict)."); }
-        if (day === 6) { isBad = true; reasons.push("It is Saturday (Saturn/Delay)."); }
-        if (day === 4) { isBad = true; reasons.push("It is Thursday (Lakshmi loss)."); }
-
-        // 2. Tithi (Rikta: 4, 9, 14, New Moon: 30, Full Moon: 15)
-        // tithiIndex is 0-29. 
-        // Prathama=0... Chaturthi=3. 
-        // Rikta are 4th (idx 3), 9th (idx 8), 14th (idx 13)
-        const tVal = (todayData.tithiIndex % 15) + 1; 
-        if (tVal === 4 || tVal === 9 || tVal === 14) {
-            isBad = true; reasons.push("Rikta Tithi (Empty Hands).");
-        }
-        if (todayData.tithiIndex === 14) { isBad = true; reasons.push("Purnima (Full Moon)."); }
-        if (todayData.tithiIndex === 29) { isBad = true; reasons.push("Amavasya (New Moon)."); }
-
-        // 3. Specific Stars (Bharani, Krittika, etc are fierce)
-        // Indices: Bharani(1), Krittika(2), Ardra(5), Ashlesha(8), Magha(9)
-        const fierceStars = [1, 2, 5, 8, 9, 19, 20]; 
-        if (fierceStars.includes(todayData.nakIndex)) {
-            isBad = true; reasons.push("Fierce Nakshatra active.");
         }
 
-        const vEl = document.getElementById("groom-verdict");
-        const rEl = document.getElementById("groom-reason");
-
-        if (isBad) {
-            vEl.innerText = "⛔ AVOID";
-            vEl.className = "bad";
-            rEl.innerHTML = reasons.join("<br>");
-        } else {
-            vEl.innerText = "✅ GOOD";
-            vEl.className = "good";
-            rEl.innerText = "Planets align well for self-care today.";
+        function displayPanchang(data) {
+            const html = `
+                <b>Tithi:</b> ${data.tithiName}<br>
+                <b>Nakshatra:</b> ${data.nakName}<br>
+                <b>Weekday:</b> ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][data.weekday]}
+            `;
+            document.getElementById('panchang-content').innerHTML = html;
         }
-    }
 
-    function calcPersonal() {
-        const d = document.getElementById("dob").value;
-        const t = document.getElementById("tob").value;
-        if(!d || !t) { alert("Please enter birth details."); return; }
+        function checkGrooming(data) {
+            let reasons = [];
+            let bad = false;
 
-        const birthDate = new Date(d + "T" + t);
-        const birthInfo = calculateVedicData(birthDate);
+            // Weekday
+            if (data.weekday === 2) { bad = true; reasons.push("Tuesday (Avoid)"); }
+            if (data.weekday === 6) { bad = true; reasons.push("Saturday (Avoid)"); }
+            if (data.weekday === 4) { bad = true; reasons.push("Thursday (Avoid)"); }
 
-        // Tarabala Logic
-        // Formula: (Current Star - Birth Star) count inclusive
-        // JS indexes are 0-based, so simple subtraction handles it, add 27 for wrap
-        let diff = (todayData.nakIndex - birthInfo.nakIndex) + 27;
-        let count = (diff % 27) + 1; // 1 to 27
-        let taraVal = (count % 9); 
-        if (taraVal === 0) taraVal = 9; // 9th is Parama Mitra
+            // Tithi (Rikta 4,9,14 & 15,30)
+            let tVal = (data.tithiIndex % 15) + 1;
+            if ([4,9,14].includes(tVal)) { bad = true; reasons.push("Rikta Tithi"); }
+            if (data.tithiIndex === 14) { bad = true; reasons.push("Purnima"); }
+            if (data.tithiIndex === 29) { bad = true; reasons.push("Amavasya"); }
 
-        const result = taraMeaning[taraVal - 1]; // Array is 0-indexed
+            const el = document.getElementById('grooming-result');
+            if (bad) {
+                el.innerHTML = `<span class="status-bad">⛔ NO / AVOID</span><br><small>${reasons.join(", ")}</small>`;
+            } else {
+                el.innerHTML = `<span class="status-good">✅ YES / GOOD</span><br><small>Favourable energy.</small>`;
+            }
+        }
 
-        const out = document.getElementById("personal-output");
-        out.classList.remove("hidden");
-        document.getElementById("user-star").innerText = birthInfo.nakName;
-        
-        const resEl = document.getElementById("tara-result");
-        resEl.innerText = result.type;
-        resEl.className = result.quality;
-        
-        document.getElementById("tara-desc").innerText = result.text;
-    }
-</script>
+        function runPersonalCalc() {
+            log("Running personal calc...");
+            const d = document.getElementById('dob').value;
+            const t = document.getElementById('tob').value;
 
+            if(!d || !t) {
+                log("User input missing", "warn");
+                alert("Please enter Birth Date & Time");
+                return;
+            }
+
+            try {
+                const birthDate = new Date(d + "T" + t);
+                const birthData = calculateVedic(birthDate);
+                
+                // Tara Bala
+                // (TodayStar - BirthStar) + 27 % 9
+                // If remainder is 1, 3, 5, 7 = Bad.
+                let diff = (globalTodayData.nakIndex - birthData.nakIndex) + 27;
+                let count = (diff % 27) + 1; 
+                let tara = count % 9;
+                
+                // 1=Janma(Bad), 2=Sampat(Good), 3=Vipat(Bad), 4=Kshema(Good), 5=Pratyak(Bad), 6=Sadhana(Good), 7=Naidhana(Bad), 8=Mitra(Good), 0(9)=ParamaMitra(Good)
+                
+                let isGood = true;
+                let type = "";
+                
+                switch(tara) {
+                    case 1: type="Janma (Birth - Sensitive)"; isGood=false; break;
+                    case 2: type="Sampat (Wealth - Very Good)"; break;
+                    case 3: type="Vipat (Danger - Bad)"; isGood=false; break;
+                    case 4: type="Kshema (Safety - Good)"; break;
+                    case 5: type="Pratyak (Obstacle - Bad)"; isGood=false; break;
+                    case 6: type="Sadhana (Success - Good)"; break;
+                    case 7: type="Naidhana (Destruction - Very Bad)"; isGood=false; break;
+                    case 8: type="Mitra (Friend - Good)"; break;
+                    case 0: type="Parama Mitra (Best Friend - Good)"; break;
+                }
+
+                const resEl = document.getElementById('personal-result');
+                if(isGood) {
+                    resEl.innerHTML = `Your Star: ${birthData.nakName}<br><span class="status-good">${type}</span>`;
+                } else {
+                    resEl.innerHTML = `Your Star: ${birthData.nakName}<br><span class="status-bad">${type}</span>`;
+                }
+                log("Personal calc success.", "info");
+
+            } catch(e) {
+                log("Personal calc failed: " + e.message, "error");
+            }
+        }
+    </script>
 </body>
 </html>
