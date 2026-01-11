@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vedic Daily & Astro Guide</title>
+    <script src="https://cdn.jsdelivr.net/npm/astronomy-engine@2.1.19/astronomy.browser.min.js"></script>
+    <style>
+        :root {
+            --primary: #FF9933; /* Saffron */
+            --dark: #333;
+            --light: #fff;
+            --bg: #fdf5e6;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            padding: 20px;
+            color: var(--dark);
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: var(--light);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            text-align: center;
+            color: #d35400;
+        }
+        .card {
+            background: #fff3e0;
+            border-left: 5px solid var(--primary);
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .status-good { color: green; font-weight: bold; }
+        .status-bad { color: red; font-weight: bold; }
+        .status-neutral { color: #d35400; font-weight: bold; }
+        
+        input, button {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: var(--primary);
+            color: white;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        button:hover { background-color: #e67e22; }
+        .result-box {
+            display: none;
+            margin-top: 20px;
+            border-top: 2px dashed #ccc;
+            padding-top: 20px;
+        }
+        .note { font-size: 0.85em; color: #666; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🕉️ Vedic Daily Guide</h1>
+    <p style="text-align: center;">Real-time Panchang & Personal Prediction</p>
+
+    <div id="panchang-display" class="card">
+        <h2>Today's Panchang</h2>
+        <p><strong>Date:</strong> <span id="current-date"></span></p>
+        <p><strong>Weekday (Vaara):</strong> <span id="current-weekday"></span></p>
+        <p><strong>Tithi (Lunar Day):</strong> <span id="current-tithi"></span></p>
+        <p><strong>Nakshatra (Star):</strong> <span id="current-nakshatra"></span></p>
+    </div>
+
+    <div class="card">
+        <h2>✂️ Grooming Guide</h2>
+        <p class="note">Is today good for haircut, shaving, or nail cutting?</p>
+        <p><strong>Verdict:</strong> <span id="grooming-verdict">Calculating...</span></p>
+        <div id="grooming-details" style="font-size: 0.9em; margin-top:5px;"></div>
+    </div>
+
+    <div class="card">
+        <h2>🔮 Personal Horoscope</h2>
+        <p>Enter birth details to check if today is favourable for you.</p>
+        
+        <label>Date of Birth:</label>
+        <input type="date" id="dob">
+        
+        <label>Time of Birth:</label>
+        <input type="time" id="tob">
+        
+        <button onclick="calculatePersonalPrediction()">Get My Prediction</button>
+
+        <div id="personal-result" class="result-box">
+            <h3>Your Prediction for Today</h3>
+            <p><strong>Your Birth Star (Janma Nakshatra):</strong> <span id="user-nakshatra"></span></p>
+            <p><strong>Tara Bala (Star Strength):</strong> <span id="tara-type"></span></p>
+            <p id="prediction-text"></p>
+            <p><strong>Advice:</strong> <span id="advice-text"></span></p>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- VEDIC DATA CONSTANTS ---
+    const nakshatras = [
+        "Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashirsha", "Ardra", 
+        "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni", "Uttara Phalguni", 
+        "Hasta", "Chitra", "Swati", "Vishakha", "Anuradha", "Jyeshtha", 
+        "Mula", "Purva Ashadha", "Uttara Ashadha", "Shravana", "Dhanishta", 
+        "Shatabhisha", "Purva Bhadrapada", "Uttara Bhadrapada", "Revati"
+    ];
+
+    const tithis = [
+        "Prathama", "Dwitiya", "Tritiya", "Chaturthi", "Panchami", "Shashthi", 
+        "Saptami", "Ashtami", "Navami", "Dashami", "Ekadashi", "Dwadashi", 
+        "Trayodashi", "Chaturdashi", "Purnima/Amavasya"
+    ];
+
+    const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+    // Tara Bala Logic (9 Cycle)
+    const taraMapping = {
+        1: { name: "Janma (Birth)", quality: "bad", desc: "Body pain, stress, or general obstacles." },
+        2: { name: "Sampat (Wealth)", quality: "good", desc: "Excellent for money, business, and gains." },
+        3: { name: "Vipat (Danger)", quality: "bad", desc: "Risk of accidents or losses. Be careful." },
+        4: { name: "Kshema (Well-being)", quality: "good", desc: "Safe, comfortable, and generally good results." },
+        5: { name: "Pratyak (Obstacle)", quality: "bad", desc: "Delays and opposition in your work." },
+        6: { name: "Sadhana (Achievement)", quality: "good", desc: "Great for completing tasks and hard work." },
+        7: { name: "Naidhana (Destruction)", quality: "bad", desc: "Very negative. Avoid new beginnings or travel." },
+        8: { name: "Mitra (Friend)", quality: "good", desc: "Support from friends and happiness." },
+        9: { name: "Parama Mitra (Best Friend)", quality: "good", desc: "Excellent success and deep support." },
+        0: { name: "Parama Mitra (Best Friend)", quality: "good", desc: "Excellent success and deep support." } // Modulo 9 remainder 0 is 9
+    };
+
+    // --- CALCULATOR FUNCTIONS ---
+
+    function getAstroData(dateObj) {
+        // Calculate Moon and Sun positions
+        const observer = new Astronomy.Observer(0, 0, 0); // Geocentric is fine for Tithi/Nakshatra
+        const moon = Astronomy.Equator("Moon", dateObj, observer, true, true);
+        const sun = Astronomy.Equator("Sun", dateObj, observer, true, true);
+        
+        // Convert to Ecliptic to get Longitude
+        const moonEcliptic = Astronomy.Ecliptic(moon);
+        const sunEcliptic = Astronomy.Ecliptic(sun);
+
+        let moonLon = moonEcliptic.lon;
+        let sunLon = sunEcliptic.lon;
+
+        // 1. Calculate Nakshatra (0-26)
+        // 360 deg / 27 stars = 13.333 deg per star
+        let nakshatraIdx = Math.floor(moonLon / (360/27));
+
+        // 2. Calculate Tithi (0-29)
+        // (MoonLon - SunLon) / 12 deg
+        let diff = moonLon - sunLon;
+        if (diff < 0) diff += 360;
+        let tithiIdx = Math.floor(diff / 12);
+        
+        // Determine Paksha (Waxing/Waning)
+        let paksha = (tithiIdx < 15) ? "Shukla Paksha" : "Krishna Paksha";
+        let tithiName = tithis[tithiIdx % 15];
+        if (tithiIdx === 14) tithiName = "Purnima";
+        if (tithiIdx === 29) tithiName = "Amavasya";
+
+        return {
+            nakshatraIdx: nakshatraIdx,
+            nakshatraName: nakshatras[nakshatraIdx],
+            tithiIdx: tithiIdx, // 0-29
+            tithiName: tithiName + " (" + paksha + ")",
+            weekdayIdx: dateObj.getDay() // 0=Sun, 6=Sat
+        };
+    }
+
+    // --- MAIN LOGIC ---
+
+    const today = new Date();
+    const todayData = getAstroData(today);
+
+    // 1. Populate Today's Panchang
+    document.getElementById("current-date").innerText = today.toDateString();
+    document.getElementById("current-weekday").innerText = weekdays[todayData.weekdayIdx];
+    document.getElementById("current-tithi").innerText = todayData.tithiName;
+    document.getElementById("current-nakshatra").innerText = todayData.nakshatraName;
+
+    // 2. Grooming Logic (Shaving/Haircut)
+    // Rules: Avoid Tues(2), Sat(6), Thu(4). Avoid Amavasya(29), Purnima(14), Rikta Tithis(3,8,13 -> 4th, 9th, 14th day)
+    function checkGrooming(data) {
+        let reasons = [];
+        let isBad = false;
+
+        // Weekday Check
+        if (data.weekdayIdx === 2) { isBad = true; reasons.push("Avoid Tuesday (Mars/Conflict)."); }
+        if (data.weekdayIdx === 6) { isBad = true; reasons.push("Avoid Saturday (Saturn/Delay)."); }
+        if (data.weekdayIdx === 4) { isBad = true; reasons.push("Avoid Thursday (Jupiter/Loss of intellect)."); }
+        
+        // Tithi Check (Indices are 0-based. Rikta are 4th, 9th, 14th tithi => indices 3, 8, 13, 18, 23, 28)
+        const tithiVal = (data.tithiIdx % 15) + 1; // 1 to 15
+        if (tithiVal === 4 || tithiVal === 9 || tithiVal === 14) {
+            isBad = true; reasons.push("Avoid Rikta Tithi (Empty Hands).");
+        }
+        if (data.tithiIdx === 14) { isBad = true; reasons.push("Avoid Purnima."); } // Full moon
+        if (data.tithiIdx === 29) { isBad = true; reasons.push("Avoid Amavasya."); } // New moon
+
+        // Render
+        const verdictEl = document.getElementById("grooming-verdict");
+        const detailEl = document.getElementById("grooming-details");
+        
+        if (isBad) {
+            verdictEl.innerText = "NO / AVOID";
+            verdictEl.className = "status-bad";
+            detailEl.innerHTML = "Reasons:<br>" + reasons.join("<br>");
+        } else {
+            verdictEl.innerText = "YES / GOOD";
+            verdictEl.className = "status-good";
+            detailEl.innerText = "Today's energy is suitable for grooming.";
+        }
+    }
+    checkGrooming(todayData);
+
+    // 3. Personal Prediction (Tara Bala)
+    function calculatePersonalPrediction() {
+        const dobStr = document.getElementById("dob").value;
+        const tobStr = document.getElementById("tob").value;
+
+        if (!dobStr || !tobStr) {
+            alert("Please enter both Date and Time of Birth.");
+            return;
+        }
+
+        const birthDate = new Date(dobStr + "T" + tobStr);
+        const birthData = getAstroData(birthDate); // Calculate birth star
+
+        // Tara Bala Calculation: (Current Star Index - Birth Star Index) % 9
+        // Note: We add 27 to handle negative wrap-around before modulo
+        let diff = (todayData.nakshatraIdx - birthData.nakshatraIdx) + 27; // Ensure positive
+        let distance = (diff % 27) + 1; // 1-based distance
+        let taraVal = distance % 9; // 1 to 9 (0 becomes 9)
+
+        const result = taraMapping[taraVal];
+
+        // Display
+        document.getElementById("personal-result").style.display = "block";
+        document.getElementById("user-nakshatra").innerText = birthData.nakshatraName;
+        document.getElementById("tara-type").innerText = result.name;
+        
+        const predText = document.getElementById("prediction-text");
+        const advText = document.getElementById("advice-text");
+
+        predText.innerText = result.desc;
+        
+        if (result.quality === "good") {
+            predText.className = "status-good";
+            advText.innerText = "Go ahead! The cosmic energy supports your actions today.";
+        } else {
+            predText.className = "status-bad";
+            advText.innerText = "Be cautious. Avoid starting major new ventures or high-risk activities today.";
+        }
+    }
+</script>
+
+</body>
+</html>
